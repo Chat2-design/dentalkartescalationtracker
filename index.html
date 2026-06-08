@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dentalkart – Courier Escalation Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --dk-primary:#0056B3;
+  --dk-primary-dark:#003d80;
+  --dk-accent:#FF6B00;
+  --dk-accent-light:#FFF3EB;
+  --dk-success:#00875A;
+  --dk-success-bg:#E3FCF7;
+  --dk-warning:#FF991F;
+  --dk-warning-bg:#FFF8EE;
+  --dk-danger:#DE350B;
+  --dk-danger-bg:#FFEBE6;
+  --dk-inprogress:#0052CC;
+  --dk-inprogress-bg:#E6F0FF;
+  --dk-closed:#00875A;
+  --dk-open:#DE350B;
+  --bg:#F0F5FF;
+  --surface:#FFFFFF;
+  --border:#DCE3F0;
+  --text:#172B4D;
+  --text-muted:#5E6C84;
+  --sidebar-w:240px;
+  --header-h:64px;
+  --font:'Plus Jakarta Sans',sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* HEADER */
+header{background:var(--dk-primary);height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:fixed;top:0;left:0;right:0;z-index:100;box-shadow:0 2px 8px rgba(0,86,179,0.3)}
+.logo{display:flex;align-items:center;gap:10px;color:#fff;font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;text-decoration:none}
+.logo-icon{width:36px;height:36px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:22px;height:22px}
+.header-right{display:flex;align-items:center;gap:12px}
+.btn-share{background:var(--dk-accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .2s}
+.btn-share:hover{background:#e55c00}
+.badge-live{background:rgba(255,255,255,0.2);color:#fff;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px}
+.dot-live{width:7px;height:7px;background:#4ADE80;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* NAV */
+nav{background:var(--surface);border-right:1px solid var(--border);width:var(--sidebar-w);position:fixed;top:var(--header-h);left:0;bottom:0;overflow-y:auto;padding:16px 0;z-index:90}
+.nav-section{padding:8px 16px 4px;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-muted);transition:all .15s;border-left:3px solid transparent;text-decoration:none}
+.nav-item:hover{background:#F0F5FF;color:var(--dk-primary);border-left-color:var(--dk-primary)}
+.nav-item.active{background:#E8F0FE;color:var(--dk-primary);border-left-color:var(--dk-primary);font-weight:600}
+.nav-item i{width:18px;text-align:center}
+.nav-count{margin-left:auto;background:var(--dk-danger);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px}
+
+/* MAIN */
+main{margin-left:var(--sidebar-w);margin-top:var(--header-h);padding:24px;flex:1;min-height:calc(100vh - var(--header-h))}
+.page{display:none}
+.page.active{display:block}
+
+/* CARDS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--surface);border-radius:12px;padding:20px;border:1px solid var(--border);display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:12px 12px 0 0}
+.stat-open::before{background:var(--dk-danger)}
+.stat-inprogress::before{background:var(--dk-inprogress)}
+.stat-closed::before{background:var(--dk-success)}
+.stat-delay::before{background:var(--dk-accent)}
+.stat-label{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.stat-value{font-size:32px;font-weight:700;font-family:'Space Grotesk',sans-serif}
+.stat-open .stat-value{color:var(--dk-danger)}
+.stat-inprogress .stat-value{color:var(--dk-inprogress)}
+.stat-closed .stat-value{color:var(--dk-success)}
+.stat-delay .stat-value{color:var(--dk-accent)}
+.stat-sub{font-size:12px;color:var(--text-muted)}
+
+/* SECTION HEADER */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.section-title{font-size:20px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--text)}
+.btn-primary{background:var(--dk-primary);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .2s;font-family:var(--font)}
+.btn-primary:hover{background:var(--dk-primary-dark)}
+.btn-secondary{background:var(--surface);color:var(--dk-primary);border:1.5px solid var(--dk-primary);padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;font-family:var(--font)}
+.btn-secondary:hover{background:var(--bg)}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-danger{background:var(--dk-danger);color:#fff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.btn-success{background:var(--dk-success);color:#fff;border:none;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border-radius:12px;border:1px solid var(--border);overflow:hidden}
+.table-toolbar{padding:16px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 14px;flex:1;max-width:300px}
+.search-box input{border:none;background:transparent;outline:none;font-size:14px;color:var(--text);width:100%;font-family:var(--font)}
+.filter-select{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);outline:none;cursor:pointer;font-family:var(--font)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:#F7F9FF}
+th{padding:12px 16px;text-align:left;font-weight:600;color:var(--text-muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#F7F9FF}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-open{background:var(--dk-danger-bg);color:var(--dk-danger)}
+.badge-inprogress{background:var(--dk-inprogress-bg);color:var(--dk-inprogress)}
+.badge-closed{background:var(--dk-success-bg);color:var(--dk-success)}
+.badge-partner{background:#EDE9FE;color:#5B21B6;font-size:10px;padding:3px 8px}
+.badge-delay{background:var(--dk-accent-light);color:var(--dk-accent)}
+.tag-action{display:inline-block;background:#F0F5FF;color:var(--dk-primary);padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(23,43,77,0.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:16px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.15)}
+.modal-header{padding:24px 28px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:1}
+.modal-title{font-size:18px;font-weight:700;font-family:'Space Grotesk',sans-serif}
+.modal-close{width:32px;height:32px;border:none;background:var(--bg);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text-muted);transition:all .15s}
+.modal-close:hover{background:var(--dk-danger-bg);color:var(--dk-danger)}
+.modal-body{padding:24px 28px}
+.modal-footer{padding:16px 28px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-row.full{grid-template-columns:1fr}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px}
+.form-label span{color:var(--dk-danger)}
+.form-input,.form-select,.form-textarea{border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--text);outline:none;transition:border-color .15s;font-family:var(--font);background:var(--surface);width:100%}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--dk-primary);box-shadow:0 0 0 3px rgba(0,86,179,.1)}
+.form-textarea{resize:vertical;min-height:80px}
+.form-hint{font-size:11px;color:var(--text-muted)}
+
+/* ALERT BANNER */
+.alert-banner{border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:20px;font-size:14px;font-weight:500}
+.alert-danger{background:var(--dk-danger-bg);color:var(--dk-danger);border:1px solid #FECDC3}
+.alert-warning{background:var(--dk-warning-bg);color:#7A4000;border:1px solid #FFD8A8}
+.alert-success{background:var(--dk-success-bg);color:var(--dk-success);border:1px solid #ABF5D1}
+
+/* CHARTS */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.chart-card{background:var(--surface);border-radius:12px;border:1px solid var(--border);padding:20px}
+.chart-title{font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text);font-family:'Space Grotesk',sans-serif}
+.chart-card canvas{max-height:220px}
+
+/* DELAY HIGHLIGHT */
+.delay-box{background:linear-gradient(135deg,#FF6B00,#FF3D00);border-radius:12px;padding:20px 24px;color:#fff;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between}
+.delay-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.85;margin-bottom:4px}
+.delay-val{font-size:36px;font-weight:800;font-family:'Space Grotesk',sans-serif}
+.delay-sub{font-size:13px;opacity:.8;margin-top:2px}
+.delay-icon{font-size:48px;opacity:.25}
+
+/* EMAIL MODAL */
+.email-preview{background:#F7F9FF;border-radius:8px;border:1px solid var(--border);padding:16px;font-size:13px;line-height:1.7;white-space:pre-wrap;font-family:monospace;color:var(--text);max-height:300px;overflow-y:auto;margin-top:8px}
+
+/* TAT CHIP */
+.tat-chip{display:inline-block;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:600;background:#F0F5FF;color:var(--dk-primary)}
+.tat-high{background:var(--dk-danger-bg);color:var(--dk-danger)}
+.tat-med{background:var(--dk-warning-bg);color:#7A4000}
+.tat-low{background:var(--dk-success-bg);color:var(--dk-success)}
+
+/* SHARE MODAL */
+.share-link-box{display:flex;gap:8px;align-items:center}
+.share-link-box input{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text);outline:none;background:var(--bg);font-family:var(--font)}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.empty-state i{font-size:48px;margin-bottom:16px;display:block;opacity:.3}
+.empty-state p{font-size:15px;font-weight:500;margin-bottom:8px}
+.empty-state span{font-size:13px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#172B4D;color:#fff;padding:14px 20px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;display:none;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:slideIn .3s ease}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ACTION BUTTONS */
+.action-btns{display:flex;gap:6px}
+.btn-icon{width:30px;height:30px;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s}
+.btn-edit{background:#EDE9FE;color:#5B21B6}
+.btn-edit:hover{background:#DDD6FE}
+.btn-delete{background:var(--dk-danger-bg);color:var(--dk-danger)}
+.btn-delete:hover{background:#FECDC3}
+.btn-email{background:var(--dk-inprogress-bg);color:var(--dk-inprogress)}
+.btn-email:hover{background:#BFDBFE}
+.btn-close-case{background:var(--dk-success-bg);color:var(--dk-success)}
+.btn-close-case:hover{background:#ABF5D1}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  nav{width:60px}
+  .nav-item span,.nav-section,.nav-count{display:none}
+  main{margin-left:60px}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .chart-row{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+}
+
+/* PARTNER SELECT */
+.partner-tabs{display:flex;gap:8px;margin-bottom:16px}
+.partner-tab{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text-muted);transition:all .15s}
+.partner-tab.active{background:var(--dk-primary);color:#fff;border-color:var(--dk-primary)}
+
+/* TAT HIGHLIGHT IN DASHBOARD */
+.tat-cell{font-size:12px;font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0056B3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+      </svg>
+    </div>
+    Dentalkart Escalation Tracker
+  </div>
+  <div class="header-right">
+    <div class="badge-live"><span class="dot-live"></span> Live</div>
+    <button class="btn-share" onclick="openShareModal()"><i class="fa fa-share-nodes"></i> Share Access</button>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-section">Menu</div>
+  <a class="nav-item active" onclick="showPage('dashboard')" href="#">
+    <i class="fa fa-chart-pie"></i><span>Dashboard</span>
+  </a>
+  <a class="nav-item" onclick="showPage('cases')" href="#">
+    <i class="fa fa-list-check"></i><span>All Cases</span><span class="nav-count" id="nav-open-count">0</span>
+  </a>
+  <a class="nav-item" onclick="showPage('escalate')" href="#">
+    <i class="fa fa-plus-circle"></i><span>New Escalation</span>
+  </a>
+  <div class="nav-section" style="margin-top:8px">Partners</div>
+  <a class="nav-item" onclick="filterByPartner('Bluedart')" href="#">
+    <i class="fa fa-truck"></i><span>Bluedart</span>
+  </a>
+  <a class="nav-item" onclick="filterByPartner('Delhivery')" href="#">
+    <i class="fa fa-truck-fast"></i><span>Delhivery</span>
+  </a>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+  <!-- DASHBOARD PAGE -->
+  <div class="page active" id="page-dashboard">
+    <div class="section-header">
+      <div class="section-title">📦 Escalation Dashboard</div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-secondary btn-sm" onclick="exportCSV()"><i class="fa fa-file-csv"></i> Export CSV</button>
+        <button class="btn-primary btn-sm" onclick="showPage('escalate')"><i class="fa fa-plus"></i> New Case</button>
+      </div>
+    </div>
+    <div id="highest-delay-banner"></div>
+    <div class="stats-row">
+      <div class="stat-card stat-open"><div class="stat-label">Open Cases</div><div class="stat-value" id="s-open">0</div><div class="stat-sub">Needs attention</div></div>
+      <div class="stat-card stat-inprogress"><div class="stat-label">In Progress</div><div class="stat-value" id="s-inprogress">0</div><div class="stat-sub">Being resolved</div></div>
+      <div class="stat-card stat-closed"><div class="stat-label">Closed</div><div class="stat-value" id="s-closed">0</div><div class="stat-sub">Resolved</div></div>
+      <div class="stat-card stat-delay"><div class="stat-label">Avg EDD Delay</div><div class="stat-value" id="s-avg-delay">0</div><div class="stat-sub">Days</div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">Cases by Status</div>
+        <canvas id="statusChart" role="img" aria-label="Cases by status"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Cases by Concern Type</div>
+        <canvas id="concernChart" role="img" aria-label="Cases by concern type"></canvas>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">Bluedart vs Delhivery</div>
+        <canvas id="partnerChart" role="img" aria-label="Cases by courier partner"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Cases Over Time (Last 14 Days)</div>
+        <canvas id="trendChart" role="img" aria-label="Cases over time"></canvas>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif">Recent Cases</span>
+        <button class="btn-secondary btn-sm" onclick="showPage('cases')">View All <i class="fa fa-arrow-right"></i></button>
+      </div>
+      <div id="recent-cases-table"></div>
+    </div>
+  </div>
+
+  <!-- ALL CASES PAGE -->
+  <div class="page" id="page-cases">
+    <div class="section-header">
+      <div class="section-title">All Escalation Cases</div>
+      <button class="btn-primary" onclick="showPage('escalate')"><i class="fa fa-plus"></i> New Escalation</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-toolbar">
+        <div class="search-box"><i class="fa fa-search" style="color:var(--text-muted);font-size:13px"></i><input id="search-input" placeholder="Search AWB, location, agent..." oninput="renderCasesTable()"/></div>
+        <select class="filter-select" id="filter-partner" onchange="renderCasesTable()"><option value="">All Partners</option><option>Bluedart</option><option>Delhivery</option></select>
+        <select class="filter-select" id="filter-status" onchange="renderCasesTable()"><option value="">All Status</option><option>Open</option><option>In Progress</option><option>Closed</option></select>
+        <select class="filter-select" id="filter-concern" onchange="renderCasesTable()">
+          <option value="">All Concerns</option>
+          <option>Delayed Shipment</option><option>EDD Breach</option><option>Fake Delivery Attempt</option>
+          <option>POD Required</option><option>Delivery Status Update</option><option>RTO Requested</option>
+          <option>Hub Address Required</option><option>Reverse Pickup</option><option>Lost Shipment</option>
+          <option>Shipment EDD Delay</option>
+        </select>
+        <button class="btn-secondary btn-sm" onclick="clearFilters()"><i class="fa fa-filter-circle-xmark"></i> Clear</button>
+      </div>
+      <div id="cases-table-body"></div>
+    </div>
+  </div>
+
+  <!-- NEW/EDIT ESCALATION PAGE -->
+  <div class="page" id="page-escalate">
+    <div class="section-header">
+      <div class="section-title" id="form-page-title">New Escalation Case</div>
+    </div>
+    <div style="background:var(--surface);border-radius:12px;border:1px solid var(--border);padding:28px;max-width:820px">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Courier Partner <span>*</span></label>
+          <select class="form-select" id="f-partner">
+            <option value="">Select Partner</option>
+            <option>Bluedart</option>
+            <option>Delhivery</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AWB Number <span>*</span></label>
+          <input class="form-input" id="f-awb" placeholder="e.g. BD1234567890" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Escalated Date <span>*</span></label>
+          <input class="form-input" type="date" id="f-escalated-date" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">State / Location <span>*</span></label>
+          <input class="form-input" id="f-location" placeholder="e.g. Delhi, Mumbai" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Concern Type <span>*</span></label>
+          <select class="form-select" id="f-concern">
+            <option value="">Select Concern</option>
+            <option>Delayed Shipment</option>
+            <option>EDD Breach</option>
+            <option>Fake Delivery Attempt</option>
+            <option>POD Required</option>
+            <option>Delivery Status Update</option>
+            <option>RTO Requested</option>
+            <option>Hub Address Required</option>
+            <option>Reverse Pickup</option>
+            <option>Lost Shipment</option>
+            <option>Shipment EDD Delay</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">EDD Delay Days</label>
+          <input class="form-input" type="number" id="f-delay-days" placeholder="Number of days delayed" min="0" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Current Status <span>*</span></label>
+          <select class="form-select" id="f-status">
+            <option value="">Select Status</option>
+            <option>Open</option>
+            <option>In Progress</option>
+            <option>Closed</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Action Required <span>*</span></label>
+          <select class="form-select" id="f-action">
+            <option value="">Select Action</option>
+            <option>Delivery Required</option>
+            <option>Urgent Delivery Needed</option>
+            <option>POD Required</option>
+            <option>Need Investigation</option>
+            <option>Hub Address</option>
+            <option>RTO</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email Sent Date</label>
+          <input class="form-input" type="date" id="f-email-sent-date" />
+          <span class="form-hint">Date email was sent to courier partner</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Close Date</label>
+          <input class="form-input" type="date" id="f-close-date" />
+          <span class="form-hint">Date response received or order delivered</span>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Agent Name <span>*</span></label>
+          <input class="form-input" id="f-agent" placeholder="Enter agent name escalating this case" />
+          <span class="form-hint">Name of the agent handling this escalation</span>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label class="form-label">Remarks / Notes</label>
+          <textarea class="form-textarea" id="f-remarks" placeholder="Additional context, customer details, special instructions..."></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn-primary" onclick="saveCase()"><i class="fa fa-save"></i> Save Case</button>
+        <button class="btn-secondary" onclick="previewEmail()"><i class="fa fa-envelope"></i> Preview Email</button>
+        <button class="btn-secondary" onclick="clearForm()"><i class="fa fa-rotate-left"></i> Reset</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- EMAIL PREVIEW MODAL -->
+<div class="modal-overlay" id="email-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fa fa-envelope" style="color:var(--dk-primary);margin-right:8px"></i>Email to Courier Partner</div>
+      <button class="modal-close" onclick="closeModal('email-modal')"><i class="fa fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px">Copy and send this email to your logistics partner:</p>
+      <div class="email-preview" id="email-preview-content"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="copyEmail()"><i class="fa fa-copy"></i> Copy Email</button>
+      <button class="btn-primary" onclick="closeModal('email-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="share-modal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fa fa-share-nodes" style="color:var(--dk-primary);margin-right:8px"></i>Share Access</div>
+      <button class="modal-close" onclick="closeModal('share-modal')"><i class="fa fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px">Share this tracker link with your team. All agents can view and update cases in real time.</p>
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">Tracker Link</label>
+        <div class="share-link-box">
+          <input type="text" id="share-url" value="" readonly/>
+          <button class="btn-primary btn-sm" onclick="copyShareLink()"><i class="fa fa-copy"></i> Copy</button>
+        </div>
+      </div>
+      <div class="alert-success" style="font-size:13px;border-radius:8px;margin-top:12px">
+        <i class="fa fa-circle-check"></i> Anyone with this link can view and manage escalation cases
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--dk-danger)"><i class="fa fa-triangle-exclamation" style="margin-right:8px"></i>Delete Case</div>
+      <button class="modal-close" onclick="closeModal('delete-modal')"><i class="fa fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--text-muted)">Are you sure you want to delete this escalation case? This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('delete-modal')">Cancel</button>
+      <button class="btn-danger" onclick="confirmDelete()">Delete Case</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><i class="fa fa-circle-check"></i><span id="toast-msg"></span></div>
+
+<script>
+// ============================================================
+// DATA STORE (localStorage)
+// ============================================================
+const STORAGE_KEY = 'dk_escalations_v2';
+let cases = [];
+let editingId = null;
+let deletingId = null;
+let statusChart = null, concernChart = null, partnerChart = null, trendChart = null;
+
+function loadCases() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    cases = raw ? JSON.parse(raw) : [];
+  } catch(e) { cases = []; }
+}
+
+function saveCases() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cases));
+}
+
+function genId() {
+  return 'DK-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase();
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (name === 'dashboard') { refreshDashboard(); }
+  if (name === 'cases') { renderCasesTable(); }
+  if (name === 'escalate' && !editingId) { clearForm(); document.getElementById('form-page-title').textContent = 'New Escalation Case'; }
+}
+
+function filterByPartner(partner) {
+  showPage('cases');
+  document.getElementById('filter-partner').value = partner;
+  renderCasesTable();
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function calcTAT(emailSentDate, closeDate) {
+  if (!emailSentDate) return null;
+  const end = closeDate ? new Date(closeDate) : new Date();
+  const start = new Date(emailSentDate);
+  const diff = Math.round((end - start) / (1000*60*60*24));
+  return diff >= 0 ? diff : 0;
+}
+
+function tatClass(days) {
+  if (days === null) return '';
+  if (days <= 1) return 'tat-low';
+  if (days <= 3) return 'tat-med';
+  return 'tat-high';
+}
+
+function statusBadge(status) {
+  const map = { 'Open': 'badge-open', 'In Progress': 'badge-inprogress', 'Closed': 'badge-closed' };
+  const icons = { 'Open': 'fa-circle-exclamation', 'In Progress': 'fa-circle-half-stroke', 'Closed': 'fa-circle-check' };
+  return `<span class="badge ${map[status]||'badge-open'}"><i class="fa ${icons[status]||'fa-circle'}"></i> ${status||'Open'}</span>`;
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  const icon = el.querySelector('i');
+  icon.className = isErr ? 'fa fa-circle-xmark' : 'fa fa-circle-check';
+  el.style.background = isErr ? '#DE350B' : '#172B4D';
+  document.getElementById('toast-msg').textContent = msg;
+  el.style.display = 'flex';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// ============================================================
+// FORM OPERATIONS
+// ============================================================
+function clearForm() {
+  editingId = null;
+  ['f-partner','f-awb','f-escalated-date','f-location','f-concern','f-delay-days',
+   'f-status','f-action','f-email-sent-date','f-close-date','f-remarks','f-agent'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('form-page-title').textContent = 'New Escalation Case';
+  // default today for escalated date
+  document.getElementById('f-escalated-date').value = new Date().toISOString().split('T')[0];
+}
+
+function saveCase() {
+  const partner = document.getElementById('f-partner').value;
+  const awb = document.getElementById('f-awb').value.trim();
+  const escalatedDate = document.getElementById('f-escalated-date').value;
+  const location = document.getElementById('f-location').value.trim();
+  const concern = document.getElementById('f-concern').value;
+  const status = document.getElementById('f-status').value;
+  const action = document.getElementById('f-action').value;
+  const agent = document.getElementById('f-agent').value.trim();
+
+  if (!partner || !awb || !escalatedDate || !location || !concern || !status || !action || !agent) {
+    toast('Please fill all required fields', true); return;
+  }
+
+  const caseObj = {
+    id: editingId || genId(),
+    partner, awb, escalatedDate,
+    location, concern,
+    delayDays: parseInt(document.getElementById('f-delay-days').value) || 0,
+    status, action,
+    emailSentDate: document.getElementById('f-email-sent-date').value,
+    closeDate: document.getElementById('f-close-date').value,
+    remarks: document.getElementById('f-remarks').value.trim(),
+    agent,
+    createdAt: editingId ? (cases.find(c=>c.id===editingId)||{}).createdAt : new Date().toISOString()
+  };
+
+  if (editingId) {
+    const idx = cases.findIndex(c => c.id === editingId);
+    if (idx > -1) cases[idx] = caseObj;
+    toast('Case updated successfully');
+  } else {
+    cases.unshift(caseObj);
+    toast('Escalation case created');
+  }
+
+  saveCases();
+  updateNavCount();
+  showPage('cases');
+}
+
+function editCase(id) {
+  const c = cases.find(x => x.id === id);
+  if (!c) return;
+  editingId = id;
+  document.getElementById('f-partner').value = c.partner;
+  document.getElementById('f-awb').value = c.awb;
+  document.getElementById('f-escalated-date').value = c.escalatedDate;
+  document.getElementById('f-location').value = c.location;
+  document.getElementById('f-concern').value = c.concern;
+  document.getElementById('f-delay-days').value = c.delayDays || '';
+  document.getElementById('f-status').value = c.status;
+  document.getElementById('f-action').value = c.action;
+  document.getElementById('f-email-sent-date').value = c.emailSentDate || '';
+  document.getElementById('f-close-date').value = c.closeDate || '';
+  document.getElementById('f-remarks').value = c.remarks || '';
+  document.getElementById('f-agent').value = c.agent || '';
+  document.getElementById('form-page-title').textContent = 'Edit Case — ' + c.id;
+  showPage('escalate');
+}
+
+function deleteCase(id) {
+  deletingId = id;
+  document.getElementById('delete-modal').classList.add('open');
+}
+
+function confirmDelete() {
+  cases = cases.filter(c => c.id !== deletingId);
+  saveCases();
+  updateNavCount();
+  closeModal('delete-modal');
+  renderCasesTable();
+  toast('Case deleted');
+}
+
+function quickClose(id) {
+  const idx = cases.findIndex(c => c.id === id);
+  if (idx > -1) {
+    cases[idx].status = 'Closed';
+    cases[idx].closeDate = new Date().toISOString().split('T')[0];
+    saveCases();
+    updateNavCount();
+    renderCasesTable();
+    toast('Case closed');
+  }
+}
+
+// ============================================================
+// EMAIL PREVIEW
+// ============================================================
+function previewEmail() {
+  const partner = document.getElementById('f-partner').value || '[Partner Name]';
+  const awb = document.getElementById('f-awb').value || '[AWB Number]';
+  const concern = document.getElementById('f-concern').value || '[Concern Type]';
+  const location = document.getElementById('f-location').value || '[Location]';
+  const action = document.getElementById('f-action').value || '[Action Required]';
+  const delayDays = document.getElementById('f-delay-days').value;
+  const agent = document.getElementById('f-agent').value || '[Agent Name]';
+  const today = fmtDate(new Date().toISOString().split('T')[0]);
+
+  const body = `Subject: Escalation – ${concern} | AWB: ${awb} | ${today}
+
+Dear ${partner} Team,
+
+Greetings from Dentalkart!
+
+We are writing to escalate a shipment issue requiring your immediate attention.
+
+Escalation Details:
+─────────────────────────────────────
+  AWB Number    : ${awb}
+  Courier       : ${partner}
+  Location      : ${location}
+  Concern Type  : ${concern}
+  EDD Delay     : ${delayDays ? delayDays + ' days' : 'As per tracking'}
+  Action Needed : ${action}
+  Date          : ${today}
+─────────────────────────────────────
+
+This case has been escalated internally under reference ID: ${genId()}.
+
+We request you to please ${action.toLowerCase()} at the earliest to avoid further customer dissatisfaction. Kindly update us with the resolution within 24 hours.
+
+For any clarifications, feel free to reach back on this email.
+
+Warm Regards,
+${agent}
+Logistics Team – Dentalkart
+logistics@dentalkart.com
+`;
+  document.getElementById('email-preview-content').textContent = body;
+  document.getElementById('email-modal').classList.add('open');
+}
+
+function copyEmail() {
+  const text = document.getElementById('email-preview-content').textContent;
+  navigator.clipboard.writeText(text).then(() => toast('Email copied to clipboard')).catch(() => {
+    const el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    toast('Email copied to clipboard');
+  });
+}
+
+// ============================================================
+// TABLES
+// ============================================================
+function renderCasesTable() {
+  const search = (document.getElementById('search-input').value || '').toLowerCase();
+  const filterPartner = document.getElementById('filter-partner').value;
+  const filterStatus = document.getElementById('filter-status').value;
+  const filterConcern = document.getElementById('filter-concern').value;
+
+  let filtered = cases.filter(c => {
+    const matchSearch = !search ||
+      c.awb.toLowerCase().includes(search) ||
+      c.location.toLowerCase().includes(search) ||
+      (c.agent||'').toLowerCase().includes(search) ||
+      c.id.toLowerCase().includes(search);
+    const matchPartner = !filterPartner || c.partner === filterPartner;
+    const matchStatus = !filterStatus || c.status === filterStatus;
+    const matchConcern = !filterConcern || c.concern === filterConcern;
+    return matchSearch && matchPartner && matchStatus && matchConcern;
+  });
+
+  const tbody = document.getElementById('cases-table-body');
+  if (!filtered.length) {
+    tbody.innerHTML = `<div class="empty-state"><i class="fa fa-inbox"></i><p>No cases found</p><span>Try adjusting your filters or add a new escalation</span></div>`;
+    return;
+  }
+
+  tbody.innerHTML = `
+  <div style="overflow-x:auto">
+  <table>
+    <thead><tr>
+      <th>Case ID</th>
+      <th>Partner</th>
+      <th>AWB</th>
+      <th>Location</th>
+      <th>Concern</th>
+      <th>Escalated</th>
+      <th>Email Sent</th>
+      <th>Closed</th>
+      <th>TAT</th>
+      <th>Delay Days</th>
+      <th>Status</th>
+      <th>Action</th>
+      <th>Agent</th>
+      <th>Actions</th>
+    </tr></thead>
+    <tbody>
+    ${filtered.map(c => {
+      const tat = calcTAT(c.emailSentDate, c.closeDate);
+      return `<tr>
+        <td style="font-family:monospace;font-size:11px;font-weight:600;color:var(--dk-primary)">${c.id}</td>
+        <td><span class="badge badge-partner">${c.partner}</span></td>
+        <td style="font-weight:600;font-size:13px">${c.awb}</td>
+        <td>${c.location}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${c.concern}</td>
+        <td style="font-size:12px">${fmtDate(c.escalatedDate)}</td>
+        <td style="font-size:12px">${fmtDate(c.emailSentDate)}</td>
+        <td style="font-size:12px">${fmtDate(c.closeDate)}</td>
+        <td><span class="tat-chip ${tat!==null?tatClass(tat):''}">${tat!==null?tat+'d':'—'}</span></td>
+        <td>${c.delayDays ? `<span class="badge badge-delay">${c.delayDays}d</span>` : '—'}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td><span class="tag-action">${c.action}</span></td>
+        <td style="font-size:12px;color:var(--text-muted)">${c.agent||'—'}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn-icon btn-edit" title="Edit" onclick="editCase('${c.id}')"><i class="fa fa-pen"></i></button>
+            <button class="btn-icon btn-email" title="Email preview" onclick="previewEmailFor('${c.id}')"><i class="fa fa-envelope"></i></button>
+            ${c.status !== 'Closed' ? `<button class="btn-icon btn-close-case" title="Mark closed" onclick="quickClose('${c.id}')"><i class="fa fa-check"></i></button>` : ''}
+            <button class="btn-icon btn-delete" title="Delete" onclick="deleteCase('${c.id}')"><i class="fa fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>
+  </div>`;
+}
+
+function previewEmailFor(id) {
+  const c = cases.find(x=>x.id===id);
+  if (!c) return;
+  editCase(id);
+  setTimeout(() => previewEmail(), 100);
+}
+
+function clearFilters() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-partner').value = '';
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-concern').value = '';
+  renderCasesTable();
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function refreshDashboard() {
+  const open = cases.filter(c=>c.status==='Open').length;
+  const inprog = cases.filter(c=>c.status==='In Progress').length;
+  const closed = cases.filter(c=>c.status==='Closed').length;
+  const delayVals = cases.filter(c=>c.delayDays>0).map(c=>c.delayDays);
+  const avgDelay = delayVals.length ? Math.round(delayVals.reduce((a,b)=>a+b,0)/delayVals.length) : 0;
+  const maxDelay = delayVals.length ? Math.max(...delayVals) : 0;
+  const maxDelayCase = cases.find(c=>c.delayDays===maxDelay && maxDelay>0);
+
+  document.getElementById('s-open').textContent = open;
+  document.getElementById('s-inprogress').textContent = inprog;
+  document.getElementById('s-closed').textContent = closed;
+  document.getElementById('s-avg-delay').textContent = avgDelay;
+  document.getElementById('nav-open-count').textContent = open;
+
+  // Highest delay banner
+  const banner = document.getElementById('highest-delay-banner');
+  if (maxDelayCase) {
+    banner.innerHTML = `<div class="delay-box">
+      <div>
+        <div class="delay-label">⚠ Highest EDD Delay Case</div>
+        <div class="delay-val">${maxDelay} Days</div>
+        <div class="delay-sub">AWB: ${maxDelayCase.awb} &nbsp;|&nbsp; ${maxDelayCase.partner} &nbsp;|&nbsp; ${maxDelayCase.location} &nbsp;|&nbsp; ${maxDelayCase.concern}</div>
+      </div>
+      <i class="fa fa-clock delay-icon"></i>
+    </div>`;
+  } else {
+    banner.innerHTML = '';
+  }
+
+  renderCharts();
+  renderRecentCases();
+}
+
+function renderRecentCases() {
+  const recent = cases.slice(0, 8);
+  const el = document.getElementById('recent-cases-table');
+  if (!recent.length) {
+    el.innerHTML = `<div class="empty-state"><i class="fa fa-inbox"></i><p>No escalations yet</p><span>Click "New Case" to add your first escalation</span></div>`;
+    return;
+  }
+  el.innerHTML = `<div style="overflow-x:auto"><table>
+    <thead><tr><th>Case ID</th><th>Partner</th><th>AWB</th><th>Concern</th><th>Status</th><th>TAT</th><th>Agent</th></tr></thead>
+    <tbody>${recent.map(c=>{
+      const tat=calcTAT(c.emailSentDate,c.closeDate);
+      return `<tr>
+        <td style="font-family:monospace;font-size:11px;color:var(--dk-primary);font-weight:600">${c.id}</td>
+        <td><span class="badge badge-partner">${c.partner}</span></td>
+        <td style="font-weight:600">${c.awb}</td>
+        <td style="font-size:12px">${c.concern}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td><span class="tat-chip ${tat!==null?tatClass(tat):''}">${tat!==null?tat+'d':'—'}</span></td>
+        <td style="font-size:12px;color:var(--text-muted)">${c.agent||'—'}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function renderCharts() {
+  const open = cases.filter(c=>c.status==='Open').length;
+  const inprog = cases.filter(c=>c.status==='In Progress').length;
+  const closed = cases.filter(c=>c.status==='Closed').length;
+
+  if (statusChart) statusChart.destroy();
+  statusChart = new Chart(document.getElementById('statusChart'), {
+    type:'doughnut',
+    data:{labels:['Open','In Progress','Closed'],datasets:[{data:[open,inprog,closed],backgroundColor:['#DE350B','#0052CC','#00875A'],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:16,font:{size:12},boxWidth:12}}}}
+  });
+
+  const concernCounts = {};
+  cases.forEach(c=>{concernCounts[c.concern]=(concernCounts[c.concern]||0)+1});
+  const cLabels=Object.keys(concernCounts), cData=Object.values(concernCounts);
+  const cColors=['#0056B3','#FF6B00','#00875A','#DE350B','#5B21B6','#0052CC','#D97706','#065F46','#BE123C','#1D4ED8'];
+
+  if (concernChart) concernChart.destroy();
+  concernChart = new Chart(document.getElementById('concernChart'), {
+    type:'bar',
+    data:{labels:cLabels,datasets:[{label:'Cases',data:cData,backgroundColor:cColors.slice(0,cLabels.length),borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},maxRotation:30}},y:{ticks:{stepSize:1},grid:{color:'rgba(0,0,0,0.05)'}}}},
+  });
+
+  const bd = cases.filter(c=>c.partner==='Bluedart').length;
+  const del = cases.filter(c=>c.partner==='Delhivery').length;
+
+  if (partnerChart) partnerChart.destroy();
+  partnerChart = new Chart(document.getElementById('partnerChart'), {
+    type:'pie',
+    data:{labels:['Bluedart','Delhivery'],datasets:[{data:[bd,del],backgroundColor:['#0056B3','#FF6B00'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{padding:16,font:{size:13},boxWidth:14}}}}
+  });
+
+  // Trend: last 14 days
+  const days=14;
+  const tLabels=[], tData=[];
+  for(let i=days-1;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const ds=d.toISOString().split('T')[0];
+    tLabels.push(d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}));
+    tData.push(cases.filter(c=>c.escalatedDate===ds).length);
+  }
+
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    type:'line',
+    data:{labels:tLabels,datasets:[{label:'Cases',data:tData,borderColor:'#0056B3',backgroundColor:'rgba(0,86,179,0.08)',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:'#0056B3',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},maxRotation:30,autoSkip:true}},y:{ticks:{stepSize:1},grid:{color:'rgba(0,0,0,0.05)'}}}}
+  });
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function exportCSV() {
+  const headers = ['Case ID','Partner','AWB','Escalated Date','Location','Concern','Delay Days','Status','Action','Email Sent','Close Date','TAT (days)','Agent','Remarks'];
+  const rows = cases.map(c=>{
+    const tat=calcTAT(c.emailSentDate,c.closeDate);
+    return [c.id,c.partner,c.awb,c.escalatedDate,c.location,c.concern,c.delayDays,c.status,c.action,c.emailSentDate||'',c.closeDate||'',tat!==null?tat:'',c.agent||'',c.remarks||''].map(v=>'"'+String(v).replace(/"/g,'""')+'"');
+  });
+  const csv=[headers.map(h=>'"'+h+'"').join(','),...rows.map(r=>r.join(','))].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='dentalkart_escalations.csv'; a.click();
+  toast('CSV exported');
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openShareModal() {
+  document.getElementById('share-url').value = window.location.href;
+  document.getElementById('share-modal').classList.add('open');
+}
+function copyShareLink() {
+  const inp = document.getElementById('share-url');
+  inp.select(); navigator.clipboard.writeText(inp.value).then(()=>toast('Link copied!'));
+}
+
+// ============================================================
+// NAV COUNT
+// ============================================================
+function updateNavCount() {
+  const open = cases.filter(c=>c.status==='Open').length;
+  document.getElementById('nav-open-count').textContent = open;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.getElementById('f-escalated-date').value = new Date().toISOString().split('T')[0];
+loadCases();
+updateNavCount();
+refreshDashboard();
+</script>
+</body>
+</html>
